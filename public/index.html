@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aura | Premium Weather</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -12,11 +12,13 @@
             font-family: 'Space Grotesk', sans-serif;
             background-color: #050505;
             color: #ffffff;
-            overflow-x: hidden;
-            min-height: 100vh;
+            /* 100dvh fixes the mobile centering issue */
+            min-height: 100dvh; 
+            margin: 0;
+            overflow: hidden;
         }
         .ambient-orb {
-            position: absolute;
+            position: fixed; /* Changed to fixed so it doesn't break flexbox */
             border-radius: 50%;
             filter: blur(90px);
             z-index: -1;
@@ -34,13 +36,12 @@
         }
         
         input::placeholder { color: rgba(255,255,255,0.3); }
-
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
-<body class="w-screen flex items-center justify-center relative p-4">
+<body class="w-full flex items-center justify-center p-4 relative">
 
     <div id="error-toast" class="fixed top-8 left-1/2 -translate-x-1/2 glass-panel px-6 py-4 rounded-2xl flex items-center gap-4 z-50 opacity-0 pointer-events-none">
         <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 flex-shrink-0">
@@ -54,14 +55,14 @@
 
     <div class="glass-panel rounded-[2.5rem] p-6 md:p-12 w-full max-w-lg relative z-10" id="app-container">
         
-        <div class="relative z-20 mb-8 md:mb-10 search-bar">
+        <div class="relative z-50 mb-8 md:mb-10 search-bar">
             <div class="relative w-full flex items-center bg-white/5 border border-white/10 rounded-2xl focus-within:bg-white/10 focus-within:border-white/30 transition-all">
                 <svg class="w-6 h-6 ml-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 <input type="text" id="cityInput" placeholder="Search village, city, or area..." autocomplete="off"
                        class="w-full bg-transparent px-4 py-4 outline-none text-base md:text-lg">
                 
-                <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-2 glass-panel rounded-2xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-50">
-                    </ul>
+                <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-2 glass-panel rounded-2xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-[100]">
+                </ul>
             </div>
         </div>
 
@@ -96,14 +97,12 @@
     </div>
 
     <script>
-        // Cinematic Load
         gsap.from("#app-container", { y: 30, opacity: 0, duration: 1, ease: "expo.out" });
 
         const input = document.getElementById('cityInput');
         const dropdown = document.getElementById('autocomplete-list');
         let timeoutId;
 
-        // UI Helpers
         function showPremiumError(message) {
             document.getElementById('error-message').innerText = message;
             const toast = document.getElementById('error-toast');
@@ -124,18 +123,18 @@
             }
         }
 
-        // --- Autocomplete using OpenStreetMap (Finds Villages) ---
+        // Expanded Search explicitly requesting village/town details
         input.addEventListener('input', (e) => {
             clearTimeout(timeoutId);
             const query = e.target.value.trim();
             if (query.length < 3) { hideDropdown(); return; }
-            timeoutId = setTimeout(() => fetchAutocomplete(query), 400); // 400ms debounce
+            timeoutId = setTimeout(() => fetchAutocomplete(query), 400); 
         });
 
         async function fetchAutocomplete(query) {
             try {
-                // Nominatim API: Highly detailed global data
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`);
+                // addressdetails=1 extracts specific tags like village
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&addressdetails=1`);
                 const data = await res.json();
 
                 if (!data || data.length === 0) { hideDropdown(); return; }
@@ -144,10 +143,10 @@
                 data.forEach(place => {
                     const li = document.createElement('li');
                     
-                    // Split the extremely detailed OpenStreetMap name into primary name and sub-region
-                    const parts = place.display_name.split(', ');
-                    const primaryName = parts[0];
-                    const subInfo = parts.slice(1, 3).join(', '); // Get next two details (e.g., district, state)
+                    // Smart parsing: prioritize exact village or town names over generic region
+                    const addr = place.address || {};
+                    const primaryName = addr.village || addr.town || addr.city_district || addr.city || place.name;
+                    const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
 
                     li.className = 'px-5 py-3 cursor-pointer hover:bg-white/10 transition-colors text-white border-b border-white/5 last:border-none text-left';
                     li.innerHTML = `
@@ -177,7 +176,6 @@
             if (!input.contains(e.target) && !dropdown.contains(e.target)) hideDropdown();
         });
 
-        // --- Core Weather Logic ---
         async function fetchWeather(lat, lon, primaryName, subRegion = "") {
             const loader = document.getElementById('loader');
             const weatherData = document.getElementById('weather-data');
@@ -186,19 +184,16 @@
             loader.classList.remove('hidden');
 
             try {
-                // Fetch Weather from Open-Meteo using the precise coordinates
                 const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
                 if (!weatherRes.ok) throw new Error("Atmospheric sync failed.");
                 
                 const weatherJson = await weatherRes.json();
                 const current = weatherJson.current_weather;
 
-                // Update UI
                 document.getElementById('cityName').innerText = primaryName;
                 document.getElementById('subRegion').innerText = subRegion;
                 document.getElementById('temperature').innerText = `${Math.round(current.temperature)}°`;
                 document.getElementById('windSpeed').innerText = `${current.windspeed} km/h`;
-                
                 document.getElementById('condition').innerText = current.is_day === 1 ? "Clear Conditions" : "Night Conditions";
                 
                 const date = new Date(current.time);
@@ -208,10 +203,7 @@
 
                 loader.classList.add('hidden');
                 weatherData.classList.remove('hidden');
-                gsap.fromTo(weatherData, 
-                    { opacity: 0, y: 20 }, 
-                    { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.2)" }
-                );
+                gsap.fromTo(weatherData, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.2)" });
                 gsap.fromTo(".data-card", { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6, ease: "power2.out", delay: 0.2 });
 
             } catch (error) {
@@ -220,34 +212,32 @@
             }
         }
 
-        // --- INITIAL LOAD: Prevent the empty home screen ---
         window.onload = () => {
-            // Try to get user's real location first
             if (navigator.geolocation) {
+                // Gave the GPS 10 full seconds to find you, otherwise skips to Kolkata
                 navigator.geolocation.getCurrentPosition(
                     async (position) => {
-                        // Success: Use their exact GPS coordinates
                         try {
-                            // Reverse geocode to get the name of their location
-                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
                             const data = await res.json();
-                            
-                            const primaryName = data.address.village || data.address.town || data.address.city || data.address.suburb || "Your Location";
-                            const subInfo = data.address.state || data.address.country || "";
+                            const addr = data.address || {};
+                            const primaryName = addr.village || addr.town || addr.city_district || addr.city || "Your Location";
+                            const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
                             
                             fetchWeather(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
                         } catch {
                             fetchWeather(position.coords.latitude, position.coords.longitude, "Local Weather");
                         }
                     },
-                    () => {
-                        // Fallback: If they deny GPS, load a default beautiful city so it's not empty
-                        fetchWeather(28.6139, 77.2090, "New Delhi", "Delhi, India"); // Fallback Coordinates
+                    (error) => {
+                        console.warn("Location error:", error);
+                        showPremiumError("GPS timeout or blocked. Defaulting to local hub.");
+                        fetchWeather(22.5726, 88.3639, "Kolkata", "West Bengal, India");
                     },
-                    { timeout: 5000 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                fetchWeather(28.6139, 77.2090, "New Delhi", "Delhi, India");
+                fetchWeather(22.5726, 88.3639, "Kolkata", "West Bengal, India");
             }
         };
     </script>
