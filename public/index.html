@@ -3,127 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aura | Premium Weather</title>
+    <title>Aura | Ultra Premium Weather</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Space Grotesk', sans-serif;
             background-color: #050505;
             color: #ffffff;
-            /* 100dvh fixes the mobile centering issue */
-            min-height: 100dvh; 
+            min-height: 100dvh;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+            padding-bottom: 2rem;
         }
         .ambient-orb {
-            position: fixed; /* Changed to fixed so it doesn't break flexbox */
+            position: fixed;
             border-radius: 50%;
-            filter: blur(90px);
+            filter: blur(100px);
             z-index: -1;
             transition: background 2s ease-in-out;
         }
-        .orb-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: rgba(56, 189, 248, 0.15); }
-        .orb-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: rgba(139, 92, 246, 0.15); }
+        .orb-1 { top: -20%; left: -10%; width: 70vw; height: 70vw; background: rgba(56, 189, 248, 0.12); }
+        .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.12); }
         
         .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        
-        input::placeholder { color: rgba(255,255,255,0.3); }
-        ::-webkit-scrollbar { width: 4px; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        
+        input::placeholder { color: rgba(255,255,255,0.3); }
+        .hide-scroll::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="w-full flex items-center justify-center p-4 relative">
-
-    <div id="error-toast" class="fixed top-8 left-1/2 -translate-x-1/2 glass-panel px-6 py-4 rounded-2xl flex items-center gap-4 z-50 opacity-0 pointer-events-none">
-        <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 flex-shrink-0">
-            <span class="text-red-400 text-sm font-bold">!</span>
-        </div>
-        <p id="error-message" class="text-white text-sm md:text-base font-medium tracking-wide">Error message</p>
-    </div>
+<body class="w-full flex flex-col items-center pt-8 px-4 relative">
 
     <div class="ambient-orb orb-1" id="bg-orb-1"></div>
     <div class="ambient-orb orb-2" id="bg-orb-2"></div>
 
-    <div class="glass-panel rounded-[2.5rem] p-6 md:p-12 w-full max-w-lg relative z-10" id="app-container">
-        
-        <div class="relative z-50 mb-8 md:mb-10 search-bar">
+    <div class="w-full max-w-md relative z-50 mb-8 ui-element">
+        <div class="flex items-center gap-2">
             <div class="relative w-full flex items-center bg-white/5 border border-white/10 rounded-2xl focus-within:bg-white/10 focus-within:border-white/30 transition-all">
-                <svg class="w-6 h-6 ml-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <input type="text" id="cityInput" placeholder="Search village, city, or area..." autocomplete="off"
-                       class="w-full bg-transparent px-4 py-4 outline-none text-base md:text-lg">
-                
-                <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-2 glass-panel rounded-2xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-[100]">
-                </ul>
+                <svg class="w-5 h-5 ml-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="cityInput" placeholder="Search location..." autocomplete="off" class="w-full bg-transparent px-3 py-3 outline-none text-base">
+            </div>
+            <button onclick="getExactLocation()" class="p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all flex-shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+        </div>
+        <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-2 glass-panel rounded-2xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-[100]"></ul>
+    </div>
+
+    <div class="w-full max-w-md flex flex-col gap-4 pb-10" id="dashboard">
+        
+        <div class="text-center mb-4 ui-element">
+            <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white">Location</h1>
+            <p id="subRegion" class="text-sm text-white/50 mb-4">--</p>
+            <div class="text-8xl font-bold tracking-tighter mb-2" id="temperature">--°</div>
+            <p id="condition" class="text-xl text-white/80 font-light mb-1">--</p>
+            <p class="text-sm text-white/50"><span id="minMax">-- / --</span> <span class="mx-2">•</span> Feels like <span id="feelsLike">--°</span></p>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-5 ui-element">
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">Hourly Forecast</h3>
+            <div class="w-full h-32 relative">
+                <canvas id="hourlyChart"></canvas>
             </div>
         </div>
 
-        <div class="flex flex-col items-center justify-center min-h-[300px] weather-content relative z-10">
-            
-            <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin"></div>
-                <p class="text-white/40 text-sm tracking-widest uppercase animate-pulse">Syncing Atmosphere...</p>
-            </div>
-
-            <div id="weather-data" class="w-full text-center opacity-0 hidden">
-                <h2 id="cityName" class="text-xl md:text-2xl font-light tracking-widest text-white/80 uppercase mb-1 line-clamp-2">Location</h2>
-                <p id="subRegion" class="text-xs md:text-sm text-white/40 mb-4 line-clamp-1">Region Info</p>
-                
-                <div class="text-7xl md:text-8xl font-bold tracking-tighter mb-2" id="temperature">--°</div>
-                <p id="condition" class="text-lg md:text-xl text-white/60 mb-8 font-light">--</p>
-                
-                <div class="grid grid-cols-2 gap-3 md:gap-4 border-t border-white/10 pt-6">
-                    <div class="glass-panel rounded-2xl p-4 data-card flex flex-col items-center">
-                        <svg class="w-5 h-5 mb-2 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                        <p class="text-[10px] md:text-xs text-white/40 uppercase tracking-widest mb-1">Wind</p>
-                        <p class="text-lg md:text-xl font-medium" id="windSpeed">-- km/h</p>
-                    </div>
-                    <div class="glass-panel rounded-2xl p-4 data-card flex flex-col items-center">
-                        <svg class="w-5 h-5 mb-2 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <p class="text-[10px] md:text-xs text-white/40 uppercase tracking-widest mb-1">Time</p>
-                        <p class="text-lg md:text-xl font-medium" id="time">--:--</p>
-                    </div>
+        <div class="glass-panel rounded-3xl p-5 ui-element">
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">7-Day Forecast</h3>
+            <div id="dailyForecast" class="flex flex-col gap-3">
                 </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 ui-element">
+            <div class="glass-panel rounded-3xl p-5">
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg> Wind</p>
+                <p class="text-2xl font-semibold" id="windSpeed">--</p>
+            </div>
+            <div class="glass-panel rounded-3xl p-5">
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> UV Index</p>
+                <p class="text-2xl font-semibold" id="uvIndex">--</p>
+            </div>
+            <div class="glass-panel rounded-3xl p-5">
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2">Humidity</p>
+                <p class="text-2xl font-semibold" id="humidity">--%</p>
+            </div>
+            <div class="glass-panel rounded-3xl p-5">
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2">Pressure</p>
+                <p class="text-2xl font-semibold" id="pressure">-- hPa</p>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-5 ui-element">
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-2">Air Quality Index</h3>
+            <div class="flex items-end gap-3 mb-4">
+                <p class="text-4xl font-bold" id="aqiValue">--</p>
+                <p class="text-lg text-white/60 mb-1" id="aqiStatus">--</p>
+            </div>
+            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-4">
+                <div id="aqiBar" class="h-full w-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 transition-all duration-1000"></div>
+            </div>
+            <div class="flex justify-between text-xs text-white/50 border-t border-white/10 pt-3">
+                <div class="text-center"><p>PM2.5</p><p class="text-white font-medium" id="pm25">--</p></div>
+                <div class="text-center"><p>PM10</p><p class="text-white font-medium" id="pm10">--</p></div>
+                <div class="text-center"><p>SO2</p><p class="text-white font-medium" id="so2">--</p></div>
             </div>
         </div>
     </div>
 
     <script>
-        gsap.from("#app-container", { y: 30, opacity: 0, duration: 1, ease: "expo.out" });
+        // Setup Chart.js global defaults for dark theme
+        Chart.defaults.color = 'rgba(255, 255, 255, 0.5)';
+        Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+        let hourlyChartInstance = null;
 
-        const input = document.getElementById('cityInput');
-        const dropdown = document.getElementById('autocomplete-list');
-        let timeoutId;
-
-        function showPremiumError(message) {
-            document.getElementById('error-message').innerText = message;
-            const toast = document.getElementById('error-toast');
-            gsap.killTweensOf(toast); 
-            gsap.fromTo(toast, { y: -20, opacity: 0, pointerEvents: "none" }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.5)" });
-            gsap.to(toast, { y: -20, opacity: 0, duration: 0.4, delay: 3.5, ease: "power2.in" });
+        // Animations
+        function animateUI() {
+            gsap.fromTo(".ui-element", 
+                { y: 30, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: "power3.out" }
+            );
         }
 
         function updateEnvironment(temp) {
             const orb1 = document.getElementById('bg-orb-1');
             const orb2 = document.getElementById('bg-orb-2');
             if (temp <= 15) { 
-                orb1.style.background = 'rgba(56, 189, 248, 0.2)'; orb2.style.background = 'rgba(59, 130, 246, 0.2)';
+                orb1.style.background = 'rgba(56, 189, 248, 0.12)'; orb2.style.background = 'rgba(59, 130, 246, 0.12)';
             } else if (temp > 15 && temp <= 28) { 
-                orb1.style.background = 'rgba(167, 139, 250, 0.2)'; orb2.style.background = 'rgba(236, 72, 153, 0.2)';
+                orb1.style.background = 'rgba(167, 139, 250, 0.12)'; orb2.style.background = 'rgba(236, 72, 153, 0.12)';
             } else { 
-                orb1.style.background = 'rgba(251, 146, 60, 0.2)'; orb2.style.background = 'rgba(239, 68, 68, 0.2)';
+                orb1.style.background = 'rgba(251, 146, 60, 0.12)'; orb2.style.background = 'rgba(239, 68, 68, 0.12)';
             }
         }
 
-        // Expanded Search explicitly requesting village/town details
+        // --- Core Fetching Logic ---
+        async function fetchFullDashboard(lat, lon, primaryName, subRegion = "") {
+            document.getElementById('cityName').innerText = primaryName || "Locating...";
+            document.getElementById('subRegion').innerText = subRegion;
+            
+            try {
+                // 1. Fetch Comprehensive Weather
+                const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,surface_pressure,wind_speed_10m&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto`;
+                
+                // 2. Fetch Air Quality
+                const aqiURL = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,sulphur_dioxide&timezone=auto`;
+
+                const [weatherRes, aqiRes] = await Promise.all([fetch(weatherURL), fetch(aqiURL)]);
+                const weatherData = await weatherRes.json();
+                const aqiData = await aqiRes.json();
+
+                // Update Hero
+                const current = weatherData.current;
+                const daily = weatherData.daily;
+                document.getElementById('temperature').innerText = `${Math.round(current.temperature_2m)}°`;
+                document.getElementById('condition').innerText = current.is_day === 1 ? "Clear / Sunny" : "Clear Night";
+                document.getElementById('feelsLike').innerText = `${Math.round(current.apparent_temperature)}°`;
+                document.getElementById('minMax').innerText = `${Math.round(daily.temperature_2m_min[0])}° ~ ${Math.round(daily.temperature_2m_max[0])}°`;
+
+                // Update Details Grid
+                document.getElementById('windSpeed').innerText = `${current.wind_speed_10m} km/h`;
+                document.getElementById('humidity').innerText = `${current.relative_humidity_2m}%`;
+                document.getElementById('pressure').innerText = `${current.surface_pressure} hPa`;
+                document.getElementById('uvIndex').innerText = daily.uv_index_max[0] ? daily.uv_index_max[0].toFixed(1) : "--";
+
+                // Update AQI
+                if(aqiData.current) {
+                    const aqi = aqiData.current.european_aqi;
+                    document.getElementById('aqiValue').innerText = aqi;
+                    document.getElementById('pm25').innerText = aqiData.current.pm2_5;
+                    document.getElementById('pm10').innerText = aqiData.current.pm10;
+                    document.getElementById('so2').innerText = aqiData.current.sulphur_dioxide;
+                    
+                    let status = "Good"; let pct = (aqi / 100) * 100;
+                    if(aqi > 50) status = "Moderate";
+                    if(aqi > 100) status = "Unhealthy";
+                    document.getElementById('aqiStatus').innerText = status;
+                    document.getElementById('aqiBar').style.width = `${Math.min(pct, 100)}%`;
+                }
+
+                // Render Hourly Chart (Next 12 hours)
+                renderHourlyChart(weatherData.hourly.time.slice(0, 12), weatherData.hourly.temperature_2m.slice(0, 12));
+
+                // Render Daily List
+                renderDailyForecast(daily);
+
+                updateEnvironment(current.temperature_2m);
+                animateUI();
+
+            } catch (error) {
+                console.error("Dashboard Sync Failed", error);
+            }
+        }
+
+        // --- Chart & List Renderers ---
+        function renderHourlyChart(times, temps) {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            
+            // Format time labels (e.g., "14:00")
+            const labels = times.map(t => new Date(t).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+
+            if (hourlyChartInstance) hourlyChartInstance.destroy();
+
+            hourlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: temps,
+                        borderColor: '#ffffff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4, // Smooth curves
+                        fill: true,
+                        pointRadius: 0, // Hide dots unless hovered
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 5 } },
+                        y: { display: false } // Hide Y axis for clean look
+                    }
+                }
+            });
+        }
+
+        function renderDailyForecast(daily) {
+            const container = document.getElementById('dailyForecast');
+            container.innerHTML = "";
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(daily.time[i]);
+                const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : days[date.getDay()];
+                const min = Math.round(daily.temperature_2m_min[i]);
+                const max = Math.round(daily.temperature_2m_max[i]);
+
+                container.innerHTML += `
+                    <div class="flex justify-between items-center text-sm py-1 border-b border-white/5 last:border-0">
+                        <span class="w-20 text-white/80">${dayName}</span>
+                        <div class="flex-1 px-4 flex items-center">
+                            <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
+                                <div class="absolute h-full bg-white/50 rounded-full" style="left: 20%; right: 20%;"></div>
+                            </div>
+                        </div>
+                        <span class="w-16 text-right font-medium">${min}° <span class="text-white/40 ml-1">${max}°</span></span>
+                    </div>
+                `;
+            }
+        }
+
+        // --- Search & Autocomplete ---
+        const input = document.getElementById('cityInput');
+        const dropdown = document.getElementById('autocomplete-list');
+        let timeoutId;
+
         input.addEventListener('input', (e) => {
             clearTimeout(timeoutId);
             const query = e.target.value.trim();
@@ -133,38 +281,30 @@
 
         async function fetchAutocomplete(query) {
             try {
-                // addressdetails=1 extracts specific tags like village
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&addressdetails=1`);
                 const data = await res.json();
-
-                if (!data || data.length === 0) { hideDropdown(); return; }
+                if (!data || data.length === 0) return;
 
                 dropdown.innerHTML = ''; 
                 data.forEach(place => {
                     const li = document.createElement('li');
-                    
-                    // Smart parsing: prioritize exact village or town names over generic region
                     const addr = place.address || {};
                     const primaryName = addr.village || addr.town || addr.city_district || addr.city || place.name;
                     const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
 
                     li.className = 'px-5 py-3 cursor-pointer hover:bg-white/10 transition-colors text-white border-b border-white/5 last:border-none text-left';
-                    li.innerHTML = `
-                        <div class="font-medium text-sm md:text-base">${primaryName}</div>
-                        <div class="text-[10px] md:text-xs text-white/50 truncate mt-0.5">${subInfo}</div>
-                    `;
+                    li.innerHTML = `<div class="font-medium text-sm">${primaryName}</div><div class="text-[10px] text-white/50 truncate mt-0.5">${subInfo}</div>`;
                     
                     li.onclick = () => {
                         input.value = primaryName;
                         hideDropdown();
-                        fetchWeather(place.lat, place.lon, primaryName, subInfo);
+                        fetchFullDashboard(place.lat, place.lon, primaryName, subInfo);
                     };
                     dropdown.appendChild(li);
                 });
-
                 dropdown.classList.remove('hidden');
                 setTimeout(() => { dropdown.style.opacity = '1'; dropdown.style.pointerEvents = 'auto'; }, 10);
-            } catch (error) { console.error("Search error:", error); }
+            } catch (error) { console.error(error); }
         }
 
         function hideDropdown() {
@@ -172,73 +312,34 @@
             setTimeout(() => dropdown.classList.add('hidden'), 300);
         }
 
-        document.addEventListener('click', (e) => {
-            if (!input.contains(e.target) && !dropdown.contains(e.target)) hideDropdown();
-        });
-
-        async function fetchWeather(lat, lon, primaryName, subRegion = "") {
-            const loader = document.getElementById('loader');
-            const weatherData = document.getElementById('weather-data');
-            
-            gsap.to(weatherData, { opacity: 0, y: -10, duration: 0.3, onComplete: () => weatherData.classList.add('hidden') });
-            loader.classList.remove('hidden');
-
-            try {
-                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`);
-                if (!weatherRes.ok) throw new Error("Atmospheric sync failed.");
-                
-                const weatherJson = await weatherRes.json();
-                const current = weatherJson.current_weather;
-
-                document.getElementById('cityName').innerText = primaryName;
-                document.getElementById('subRegion').innerText = subRegion;
-                document.getElementById('temperature').innerText = `${Math.round(current.temperature)}°`;
-                document.getElementById('windSpeed').innerText = `${current.windspeed} km/h`;
-                document.getElementById('condition').innerText = current.is_day === 1 ? "Clear Conditions" : "Night Conditions";
-                
-                const date = new Date(current.time);
-                document.getElementById('time').innerText = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-                updateEnvironment(current.temperature);
-
-                loader.classList.add('hidden');
-                weatherData.classList.remove('hidden');
-                gsap.fromTo(weatherData, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.2)" });
-                gsap.fromTo(".data-card", { y: 15, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.1, duration: 0.6, ease: "power2.out", delay: 0.2 });
-
-            } catch (error) {
-                loader.classList.add('hidden');
-                showPremiumError("Failed to connect to weather satellites.");
-            }
-        }
-
-        window.onload = () => {
+        // --- The Ultimate Fix: Exact Location Button ---
+        function getExactLocation() {
             if (navigator.geolocation) {
-                // Gave the GPS 10 full seconds to find you, otherwise skips to Kolkata
+                input.value = "Locating...";
                 navigator.geolocation.getCurrentPosition(
                     async (position) => {
                         try {
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
                             const data = await res.json();
                             const addr = data.address || {};
-                            const primaryName = addr.village || addr.town || addr.city_district || addr.city || "Your Location";
+                            const primaryName = addr.village || addr.town || addr.suburb || addr.city || "Current Location";
                             const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
                             
-                            fetchWeather(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
+                            input.value = primaryName;
+                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
                         } catch {
-                            fetchWeather(position.coords.latitude, position.coords.longitude, "Local Weather");
+                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, "Your Coordinates");
                         }
                     },
-                    (error) => {
-                        console.warn("Location error:", error);
-                        showPremiumError("GPS timeout or blocked. Defaulting to local hub.");
-                        fetchWeather(22.5726, 88.3639, "Kolkata", "West Bengal, India");
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    (error) => alert("GPS access denied or timed out."),
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
-            } else {
-                fetchWeather(22.5726, 88.3639, "Kolkata", "West Bengal, India");
             }
+        }
+
+        // Boot
+        window.onload = () => {
+            fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India"); // Default
         };
     </script>
 </body>
