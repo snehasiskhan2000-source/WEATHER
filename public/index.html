@@ -16,29 +16,40 @@
             margin: 0;
             overflow-x: hidden;
             padding-bottom: 2rem;
+            overscroll-behavior-y: none; /* Prevents clunky mobile bounce */
         }
         
-        /* Dynamic Ambient Orbs */
+        /* Dynamic Ambient Orbs - Hardware Accelerated */
         .ambient-orb {
             position: fixed;
             border-radius: 50%;
             filter: blur(120px);
             z-index: -1;
             transition: background 2.5s ease-in-out;
+            will-change: background;
+            transform: translateZ(0);
         }
         .orb-1 { top: -20%; left: -10%; width: 70vw; height: 70vw; background: rgba(56, 189, 248, 0.1); }
         .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.1); }
         
-        /* Weather FX Layer */
         #weather-fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
         
-        /* Glassmorphism */
+        /* Glassmorphism - GPU Optimized */
         .glass-panel {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.05);
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            will-change: transform, backdrop-filter;
+            transform: translateZ(0);
+        }
+
+        /* Upgraded Scroll Container Physics */
+        #hourlyContainer {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            touch-action: pan-x;
         }
 
         .hide-scroll::-webkit-scrollbar { display: none; }
@@ -50,10 +61,10 @@
         @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; transform: scale(1.2); } }
         @keyframes drift { from { transform: translateX(-20vw); } to { transform: translateX(120vw); } }
         
-        .rain-drop { position: absolute; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.4)); width: 1.5px; height: 35px; animation: fall linear infinite; }
-        .snow-flake { position: absolute; background: #fff; border-radius: 50%; animation: fall linear infinite; box-shadow: 0 0 10px #fff; }
-        .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle ease-in-out infinite; box-shadow: 0 0 5px #fff; }
-        .cloud { position: absolute; background: rgba(255,255,255,0.05); border-radius: 50%; filter: blur(40px); animation: drift linear infinite; }
+        .rain-drop { position: absolute; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.4)); width: 1.5px; height: 35px; animation: fall linear infinite; will-change: transform; }
+        .snow-flake { position: absolute; background: #fff; border-radius: 50%; animation: fall linear infinite; box-shadow: 0 0 10px #fff; will-change: transform; }
+        .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle ease-in-out infinite; box-shadow: 0 0 5px #fff; will-change: opacity, transform; }
+        .cloud { position: absolute; background: rgba(255,255,255,0.05); border-radius: 50%; filter: blur(40px); animation: drift linear infinite; will-change: transform; }
     </style>
 </head>
 <body class="w-full flex flex-col items-center pt-8 px-4 relative">
@@ -235,10 +246,7 @@
             document.getElementById('subRegion').innerText = subRegion;
             
             try {
-                // FIXED: Visibility moved to hourly to prevent the 400 Bad Request error
                 const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,surface_pressure,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code,visibility&daily=temperature_2m_max,temperature_2m_min,uv_index_max,sunrise,sunset&timezone=auto`;
-                
-                // ADDED: Air Quality API
                 const aqiURL = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,carbon_monoxide,sulphur_dioxide&timezone=auto`;
 
                 const [weatherRes, aqiRes] = await Promise.all([fetch(weatherURL), fetch(aqiURL)]);
@@ -261,11 +269,9 @@
                 document.getElementById('pressure').innerText = `${current.surface_pressure} hPa`;
                 document.getElementById('uvIndex').innerText = daily.uv_index_max[0] ? daily.uv_index_max[0].toFixed(1) : "--";
                 
-                // Pulling visibility from the first hour of the array
                 const visArray = weatherData.hourly.visibility;
                 document.getElementById('visibility').innerText = visArray && visArray[0] ? `${(visArray[0] / 1000).toFixed(1)} km` : "--";
 
-                // Update AQI Card
                 if(aqiData && aqiData.current) {
                     const aqi = aqiData.current.european_aqi;
                     document.getElementById('aqiValue').innerText = aqi;
