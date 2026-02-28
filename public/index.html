@@ -41,7 +41,6 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
 
-        /* Custom Scrollbars */
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         input::placeholder { color: rgba(255,255,255,0.3); }
@@ -58,6 +57,13 @@
     </style>
 </head>
 <body class="w-full flex flex-col items-center pt-8 px-4 relative">
+
+    <div id="error-toast" class="fixed top-8 left-1/2 -translate-x-1/2 glass-panel px-6 py-4 rounded-2xl flex items-center gap-4 z-50 opacity-0 pointer-events-none w-11/12 max-w-md">
+        <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 shrink-0">
+            <span class="text-red-400 text-sm font-bold">!</span>
+        </div>
+        <p id="error-message" class="text-white text-sm font-medium tracking-wide">Error</p>
+    </div>
 
     <div id="weather-fx"></div>
     <div class="ambient-orb orb-1" id="bg-orb-1"></div>
@@ -80,7 +86,7 @@
         
         <div class="text-center mb-2 ui-element">
             <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white capitalize">Syncing...</h1>
-            <p id="subRegion" class="text-sm text-white/50 mb-4">--</p>
+            <p id="subRegion" class="text-sm text-white/50 mb-4">Establishing uplink</p>
             <div class="text-8xl font-bold tracking-tighter mb-2" id="temperature">--°</div>
             <p id="condition" class="text-xl text-white/80 font-medium mb-1">--</p>
             <p class="text-sm text-white/50"><span id="minMax">-- / --</span> <span class="mx-2">•</span> Feels like <span id="feelsLike">--°</span></p>
@@ -93,11 +99,6 @@
             </h3>
             <div id="hourlyContainer" class="flex gap-3 overflow-x-auto hide-scroll pb-2 w-full snap-x">
                 </div>
-        </div>
-
-        <div class="glass-panel rounded-3xl p-5 ui-element">
-            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">7-Day Forecast</h3>
-            <div id="dailyForecast" class="flex flex-col gap-3"></div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 ui-element">
@@ -124,6 +125,29 @@
         </div>
 
         <div class="glass-panel rounded-3xl p-5 ui-element">
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-2">Air Quality Index</h3>
+            <div class="flex items-end gap-3 mb-4">
+                <p class="text-4xl font-bold" id="aqiValue">--</p>
+                <p class="text-lg text-white/60 mb-1" id="aqiStatus">--</p>
+            </div>
+            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-4 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-600 opacity-50"></div>
+                <div id="aqiIndicator" class="absolute top-0 h-full w-2 bg-white rounded-full transition-all duration-1000 shadow-[0_0_8px_#fff]" style="left: 0%;"></div>
+            </div>
+            <div class="flex justify-between text-[10px] uppercase tracking-wider text-white/50 border-t border-white/10 pt-3">
+                <div class="text-center"><p>PM2.5</p><p class="text-white font-medium text-sm mt-0.5" id="pm25">--</p></div>
+                <div class="text-center"><p>PM10</p><p class="text-white font-medium text-sm mt-0.5" id="pm10">--</p></div>
+                <div class="text-center"><p>CO</p><p class="text-white font-medium text-sm mt-0.5" id="co">--</p></div>
+                <div class="text-center"><p>SO2</p><p class="text-white font-medium text-sm mt-0.5" id="so2">--</p></div>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-5 ui-element">
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">7-Day Forecast</h3>
+            <div id="dailyForecast" class="flex flex-col gap-3"></div>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-5 ui-element">
             <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">Sun & Moon</h3>
             <div class="relative w-full h-16 overflow-hidden mt-6 mb-2">
                 <div class="absolute w-[90%] left-[5%] h-32 border-t-2 border-dashed border-white/30 rounded-full top-0"></div>
@@ -138,7 +162,14 @@
     </div>
 
     <script>
-        // --- Dynamic Weather Engine 💀 ---
+        function showPremiumError(message) {
+            document.getElementById('error-message').innerText = message;
+            const toast = document.getElementById('error-toast');
+            gsap.killTweensOf(toast); 
+            gsap.fromTo(toast, { y: -20, opacity: 0, pointerEvents: "none" }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.5)" });
+            gsap.to(toast, { y: -20, opacity: 0, duration: 0.4, delay: 4, ease: "power2.in" });
+        }
+
         function getWeatherEmoji(code, isDay) {
             const map = {
                 0: isDay ? '☀️' : '🌕', 
@@ -155,72 +186,43 @@
 
         function triggerWeatherFX(code, isDay) {
             const fxContainer = document.getElementById('weather-fx');
-            fxContainer.innerHTML = ''; // Clear old fx
-            
-            // Background color shifting
+            fxContainer.innerHTML = ''; 
             updateEnvironment(code, isDay);
 
-            let particles = 0;
-            let type = '';
-
-            // Rain (Codes 51-67, 80-82)
-            if ([51,53,55,61,63,65,66,67,80,81,82].includes(code)) {
-                particles = 60; type = 'rain';
-            } 
-            // Snow (Codes 71-77, 85-86)
-            else if ([71,73,75,77,85,86].includes(code)) {
-                particles = 40; type = 'snow';
-            }
-            // Clear Night Stars
-            else if (code === 0 && !isDay) {
-                particles = 30; type = 'star';
-            }
-            // Clouds
-            else if ([2,3,45,48].includes(code)) {
-                particles = 5; type = 'cloud';
-            }
+            let particles = 0; let type = '';
+            if ([51,53,55,61,63,65,66,67,80,81,82].includes(code)) { particles = 60; type = 'rain'; } 
+            else if ([71,73,75,77,85,86].includes(code)) { particles = 40; type = 'snow'; }
+            else if (code === 0 && !isDay) { particles = 30; type = 'star'; }
+            else if ([2,3,45,48].includes(code)) { particles = 5; type = 'cloud'; }
 
             for(let i=0; i<particles; i++) {
                 let el = document.createElement('div');
                 el.className = type === 'rain' ? 'rain-drop' : type === 'snow' ? 'snow-flake' : type === 'star' ? 'star' : 'cloud';
                 
                 if(type === 'rain') {
-                    el.style.left = `${Math.random() * 100}vw`;
-                    el.style.top = `-${Math.random() * 20}vh`;
-                    el.style.animationDuration = `${0.5 + Math.random() * 0.3}s`;
-                    el.style.animationDelay = `${Math.random()}s`;
+                    el.style.left = `${Math.random() * 100}vw`; el.style.top = `-${Math.random() * 20}vh`;
+                    el.style.animationDuration = `${0.5 + Math.random() * 0.3}s`; el.style.animationDelay = `${Math.random()}s`;
                 } else if(type === 'snow' || type === 'star') {
-                    el.style.left = `${Math.random() * 100}vw`;
-                    el.style.top = type === 'snow' ? `-${Math.random() * 20}vh` : `${Math.random() * 100}vh`;
-                    let size = Math.random() * (type==='snow'?4:3) + 1;
-                    el.style.width = `${size}px`;
-                    el.style.height = `${size}px`;
+                    el.style.left = `${Math.random() * 100}vw`; el.style.top = type === 'snow' ? `-${Math.random() * 20}vh` : `${Math.random() * 100}vh`;
+                    let size = Math.random() * (type==='snow'?4:3) + 1; el.style.width = `${size}px`; el.style.height = `${size}px`;
                     el.style.animationDuration = type==='snow' ? `${3 + Math.random() * 3}s` : `${2 + Math.random() * 4}s`;
                     el.style.animationDelay = `${Math.random() * 2}s`;
                 } else if(type === 'cloud') {
-                    el.style.top = `${Math.random() * 30}vh`;
-                    el.style.width = `${200 + Math.random() * 300}px`;
-                    el.style.height = `${100 + Math.random() * 150}px`;
-                    el.style.animationDuration = `${40 + Math.random() * 40}s`;
-                    el.style.animationDelay = `-${Math.random() * 40}s`;
+                    el.style.top = `${Math.random() * 30}vh`; el.style.width = `${200 + Math.random() * 300}px`; el.style.height = `${100 + Math.random() * 150}px`;
+                    el.style.animationDuration = `${40 + Math.random() * 40}s`; el.style.animationDelay = `-${Math.random() * 40}s`;
                 }
                 fxContainer.appendChild(el);
             }
         }
 
         function updateEnvironment(code, isDay) {
-            const orb1 = document.getElementById('bg-orb-1');
-            const orb2 = document.getElementById('bg-orb-2');
-            
-            if (!isDay && code <= 3) { // Clear/Partly Cloudy Night
-                orb1.style.background = 'rgba(30, 58, 138, 0.15)'; // Deep blue
-                orb2.style.background = 'rgba(88, 28, 135, 0.15)'; // Deep purple
-            } else if (code >= 50) { // Rain/Storm/Snow
-                orb1.style.background = 'rgba(71, 85, 105, 0.2)'; // Gray
-                orb2.style.background = 'rgba(100, 116, 139, 0.2)'; 
-            } else { // Clear Day
-                orb1.style.background = 'rgba(56, 189, 248, 0.15)'; 
-                orb2.style.background = 'rgba(236, 72, 153, 0.12)'; 
+            const orb1 = document.getElementById('bg-orb-1'); const orb2 = document.getElementById('bg-orb-2');
+            if (!isDay && code <= 3) { 
+                orb1.style.background = 'rgba(30, 58, 138, 0.15)'; orb2.style.background = 'rgba(88, 28, 135, 0.15)';
+            } else if (code >= 50) { 
+                orb1.style.background = 'rgba(71, 85, 105, 0.2)'; orb2.style.background = 'rgba(100, 116, 139, 0.2)'; 
+            } else { 
+                orb1.style.background = 'rgba(56, 189, 248, 0.15)'; orb2.style.background = 'rgba(236, 72, 153, 0.12)'; 
             }
         }
 
@@ -228,72 +230,88 @@
             gsap.fromTo(".ui-element", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out" });
         }
 
-        // --- Data Fetching ---
         async function fetchFullDashboard(lat, lon, primaryName, subRegion = "") {
             document.getElementById('cityName').innerText = primaryName || "Locating...";
             document.getElementById('subRegion').innerText = subRegion;
             
             try {
-                // Expanded URL to include visibility, weather codes, and sunrise/sunset
-                const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,surface_pressure,wind_speed_10m,weather_code,visibility&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,uv_index_max,sunrise,sunset&timezone=auto`;
+                // FIXED: Visibility moved to hourly to prevent the 400 Bad Request error
+                const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,surface_pressure,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code,visibility&daily=temperature_2m_max,temperature_2m_min,uv_index_max,sunrise,sunset&timezone=auto`;
+                
+                // ADDED: Air Quality API
+                const aqiURL = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,carbon_monoxide,sulphur_dioxide&timezone=auto`;
 
-                const weatherRes = await fetch(weatherURL);
+                const [weatherRes, aqiRes] = await Promise.all([fetch(weatherURL), fetch(aqiURL)]);
+                
+                if (!weatherRes.ok) throw new Error("Weather API Error: Data not available for this region.");
+
                 const weatherData = await weatherRes.json();
+                const aqiData = await (aqiRes.ok ? aqiRes.json() : Promise.resolve(null));
 
                 const current = weatherData.current;
                 const daily = weatherData.daily;
                 
-                // Update Hero
                 document.getElementById('temperature').innerText = `${Math.round(current.temperature_2m)}°`;
                 document.getElementById('condition').innerText = getWeatherEmoji(current.weather_code, current.is_day) + " " + (current.is_day === 1 ? "Daytime" : "Night");
                 document.getElementById('feelsLike').innerText = `${Math.round(current.apparent_temperature)}°`;
                 document.getElementById('minMax').innerText = `${Math.round(daily.temperature_2m_min[0])}° ~ ${Math.round(daily.temperature_2m_max[0])}°`;
 
-                // Update Grid (Matches your screenshot exactly now)
                 document.getElementById('windSpeed').innerText = `${current.wind_speed_10m} km/h`;
                 document.getElementById('humidity').innerText = `${current.relative_humidity_2m}%`;
                 document.getElementById('pressure').innerText = `${current.surface_pressure} hPa`;
                 document.getElementById('uvIndex').innerText = daily.uv_index_max[0] ? daily.uv_index_max[0].toFixed(1) : "--";
-                document.getElementById('visibility').innerText = current.visibility ? `${(current.visibility / 1000).toFixed(1)} km` : "--";
+                
+                // Pulling visibility from the first hour of the array
+                const visArray = weatherData.hourly.visibility;
+                document.getElementById('visibility').innerText = visArray && visArray[0] ? `${(visArray[0] / 1000).toFixed(1)} km` : "--";
 
-                // Update Sunrise / Sunset
+                // Update AQI Card
+                if(aqiData && aqiData.current) {
+                    const aqi = aqiData.current.european_aqi;
+                    document.getElementById('aqiValue').innerText = aqi;
+                    document.getElementById('pm25').innerText = aqiData.current.pm2_5 || "--";
+                    document.getElementById('pm10').innerText = aqiData.current.pm10 || "--";
+                    document.getElementById('co').innerText = aqiData.current.carbon_monoxide || "--";
+                    document.getElementById('so2').innerText = aqiData.current.sulphur_dioxide || "--";
+                    
+                    let status = "Good"; let pct = Math.min((aqi / 150) * 100, 100);
+                    if(aqi > 50) status = "Moderate";
+                    if(aqi > 100) status = "Poor";
+                    if(aqi > 150) status = "Unhealthy";
+                    
+                    document.getElementById('aqiStatus').innerText = status;
+                    document.getElementById('aqiIndicator').style.left = `calc(${pct}% - 4px)`;
+                }
+
                 const rise = new Date(daily.sunrise[0]);
                 const set = new Date(daily.sunset[0]);
                 document.getElementById('sunriseTime').innerText = rise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('sunsetTime').innerText = set.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                // Render Native Swipeable Hourly List
                 renderSwipeableHourly(weatherData.hourly.time.slice(0, 24), weatherData.hourly.temperature_2m.slice(0, 24), weatherData.hourly.weather_code.slice(0, 24));
-                
-                // Render Daily
                 renderDailyForecast(daily);
                 
-                // Trigger FX
                 triggerWeatherFX(current.weather_code, current.is_day);
                 animateUI();
 
             } catch (error) {
-                console.error("Dashboard Sync Failed", error);
+                console.error(error);
+                document.getElementById('cityName').innerText = "Sync Failed";
+                document.getElementById('subRegion').innerText = "Tap GPS to retry";
+                showPremiumError(error.message);
             }
         }
 
-        // --- Native Swipeable 24h List (No more squished Chart.js) ---
         function renderSwipeableHourly(times, temps, codes) {
             const container = document.getElementById('hourlyContainer');
             container.innerHTML = "";
-
             for (let i = 0; i < 24; i++) {
                 const date = new Date(times[i]);
-                let hours = date.getHours();
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12 || 12;
+                let hours = date.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12;
                 const timeStr = i === 0 ? 'Now' : `${hours} ${ampm}`;
-                
-                // Determine if this specific hour is daytime for the emoji
                 const isDayHour = date.getHours() >= 6 && date.getHours() <= 18; 
                 const emoji = getWeatherEmoji(codes[i], isDayHour);
 
-                // Create sleek card
                 container.innerHTML += `
                     <div class="flex flex-col items-center justify-between min-w-[4.5rem] p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0 snap-start">
                         <span class="text-xs text-white/60">${timeStr}</span>
@@ -308,12 +326,10 @@
             const container = document.getElementById('dailyForecast');
             container.innerHTML = "";
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
             for (let i = 0; i < 7; i++) {
                 const date = new Date(daily.time[i]);
                 const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : days[date.getDay()];
-                const min = Math.round(daily.temperature_2m_min[i]);
-                const max = Math.round(daily.temperature_2m_max[i]);
+                const min = Math.round(daily.temperature_2m_min[i]); const max = Math.round(daily.temperature_2m_max[i]);
 
                 container.innerHTML += `
                     <div class="flex justify-between items-center text-sm py-2 border-b border-white/5 last:border-0">
@@ -329,7 +345,7 @@
             }
         }
 
-        // --- Autocomplete ---
+        // --- Autocomplete & Search ---
         const input = document.getElementById('cityInput');
         const dropdown = document.getElementById('autocomplete-list');
         let timeoutId;
@@ -352,4 +368,58 @@
                     const li = document.createElement('li');
                     const addr = place.address || {};
                     const primaryName = addr.village || addr.town || addr.city_district || addr.city || place.name;
-                    const subInfo = [addr.state, addr.coun
+                    const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
+
+                    li.className = 'px-5 py-3 cursor-pointer hover:bg-white/10 transition-colors text-white border-b border-white/5 last:border-none text-left';
+                    li.innerHTML = `<div class="font-medium text-sm">${primaryName}</div><div class="text-[10px] text-white/50 truncate mt-0.5">${subInfo}</div>`;
+                    
+                    li.onclick = () => {
+                        input.value = primaryName;
+                        hideDropdown();
+                        fetchFullDashboard(place.lat, place.lon, primaryName, subInfo);
+                    };
+                    dropdown.appendChild(li);
+                });
+                dropdown.classList.remove('hidden');
+                setTimeout(() => { dropdown.style.opacity = '1'; dropdown.style.pointerEvents = 'auto'; }, 10);
+            } catch (error) { console.error(error); }
+        }
+
+        function hideDropdown() {
+            dropdown.style.opacity = '0'; dropdown.style.pointerEvents = 'none';
+            setTimeout(() => dropdown.classList.add('hidden'), 300);
+        }
+
+        function getExactLocation() {
+            hideDropdown(); input.blur(); 
+            if (navigator.geolocation) {
+                const customTypedName = input.value.trim();
+                input.value = "Locating...";
+                
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
+                            const data = await res.json();
+                            const addr = data.address || {};
+                            const primaryName = customTypedName || (addr.village || addr.town || addr.suburb || addr.city || "Current Location");
+                            const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
+                            
+                            input.value = primaryName;
+                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
+                        } catch {
+                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, customTypedName || "Your Coordinates");
+                        }
+                    },
+                    (error) => { input.value = ""; showPremiumError("GPS access denied."); },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            }
+        }
+
+        window.onload = () => {
+            fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India");
+        };
+    </script>
+</body>
+</html>
