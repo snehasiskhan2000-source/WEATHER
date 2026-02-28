@@ -16,25 +16,26 @@
             margin: 0;
             overflow-x: hidden;
             padding-bottom: 2rem;
-            overscroll-behavior-y: none; /* Prevents clunky mobile bounce */
+            overscroll-behavior-y: none;
         }
         
-        /* Dynamic Ambient Orbs - Hardware Accelerated */
+        /* GPU Accelerated Orbs */
         .ambient-orb {
             position: fixed;
             border-radius: 50%;
             filter: blur(120px);
-            z-index: -1;
-            transition: background 2.5s ease-in-out;
+            z-index: -2;
+            transition: background 3s ease-in-out;
             will-change: background;
             transform: translateZ(0);
         }
         .orb-1 { top: -20%; left: -10%; width: 70vw; height: 70vw; background: rgba(56, 189, 248, 0.1); }
         .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.1); }
         
-        #weather-fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        /* Weather FX Layer */
+        #weather-fx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
         
-        /* Glassmorphism - GPU Optimized */
+        /* Premium Glassmorphism */
         .glass-panel {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(24px);
@@ -45,34 +46,41 @@
             transform: translateZ(0);
         }
 
-        /* Upgraded Scroll Container Physics */
         #hourlyContainer {
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
             touch-action: pan-x;
         }
-
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         input::placeholder { color: rgba(255,255,255,0.3); }
 
-        /* FX Animations */
+        /* --- ADVANCED WEATHER ANIMATIONS --- */
         @keyframes fall { to { transform: translateY(110vh); } }
-        @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; transform: scale(1.2); } }
         @keyframes drift { from { transform: translateX(-20vw); } to { transform: translateX(120vw); } }
-        
+        @keyframes pulseTwinkle { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; transform: scale(1.05); } }
+        @keyframes pulseRay { 0% { opacity: 0.3; transform: translateX(-50%) scale(1); } 100% { opacity: 0.7; transform: translateX(-50%) scale(1.1); } }
+        @keyframes lightningAnim { 0%, 94%, 98%, 100% { opacity: 0; } 95% { opacity: 0.8; } 96% { opacity: 0; } 97% { opacity: 1; } }
+
+        /* Weather Elements */
         .rain-drop { position: absolute; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.4)); width: 1.5px; height: 35px; animation: fall linear infinite; will-change: transform; }
         .snow-flake { position: absolute; background: #fff; border-radius: 50%; animation: fall linear infinite; box-shadow: 0 0 10px #fff; will-change: transform; }
-        .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle ease-in-out infinite; box-shadow: 0 0 5px #fff; will-change: opacity, transform; }
-        .cloud { position: absolute; background: rgba(255,255,255,0.05); border-radius: 50%; filter: blur(40px); animation: drift linear infinite; will-change: transform; }
+        .cloud { position: absolute; border-radius: 50%; filter: blur(40px); animation: drift linear infinite; will-change: transform; }
+        
+        /* The Massive Starfield Trick */
+        .star-layer { position: absolute; width: 1px; height: 1px; background: transparent; animation: pulseTwinkle ease-in-out infinite; will-change: opacity, transform; }
+        
+        /* Sun Rays */
+        .sun-ray { position: absolute; top: -10%; left: 50%; width: 150vw; height: 100vh; background: radial-gradient(circle at center top, rgba(255,255,255,0.15) 0%, transparent 60%); transform: translateX(-50%); animation: pulseRay 8s infinite alternate ease-in-out; mix-blend-mode: overlay; }
+        
+        /* Lightning */
+        .lightning-flash { position: absolute; inset: 0; background: white; opacity: 0; z-index: 10; mix-blend-mode: overlay; animation: lightningAnim 8s infinite; }
     </style>
 </head>
 <body class="w-full flex flex-col items-center pt-8 px-4 relative">
 
     <div id="error-toast" class="fixed top-8 left-1/2 -translate-x-1/2 glass-panel px-6 py-4 rounded-2xl flex items-center gap-4 z-50 opacity-0 pointer-events-none w-11/12 max-w-md">
-        <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 shrink-0">
-            <span class="text-red-400 text-sm font-bold">!</span>
-        </div>
+        <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50 shrink-0"><span class="text-red-400 text-sm font-bold">!</span></div>
         <p id="error-message" class="text-white text-sm font-medium tracking-wide">Error</p>
     </div>
 
@@ -82,25 +90,16 @@
 
     <div class="w-full max-w-md relative z-50 mb-6 ui-element">
         <div class="relative w-full flex items-center bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-1.5 focus-within:border-white/30 focus-within:bg-[#222]/90 transition-all shadow-2xl">
-            
-            <div class="pl-4 pr-2 text-white/40">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-
-            <input type="text" id="cityInput" placeholder="Search city or village..." autocomplete="off" 
-                   class="w-full bg-transparent py-2.5 outline-none text-base text-white placeholder:text-white/40 font-medium tracking-wide">
-            
+            <div class="pl-4 pr-2 text-white/40"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
+            <input type="text" id="cityInput" placeholder="Search city or village..." autocomplete="off" class="w-full bg-transparent py-2.5 outline-none text-base text-white placeholder:text-white/40 font-medium tracking-wide">
             <button onclick="getExactLocation()" class="flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-black rounded-full font-bold text-sm hover:bg-gray-200 active:scale-95 transition-transform duration-200 shrink-0 shadow-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Locate
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> Locate
             </button>
         </div>
-
         <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-3 glass-panel rounded-3xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-[100] shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10"></ul>
     </div>
 
     <div class="w-full max-w-md flex flex-col gap-4 pb-10 relative z-10" id="dashboard">
-        
         <div class="text-center mb-2 ui-element">
             <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white capitalize">Syncing...</h1>
             <p id="subRegion" class="text-sm text-white/50 mb-4">Establishing uplink</p>
@@ -114,39 +113,20 @@
                 <span>24-Hour Forecast</span>
                 <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full flex items-center gap-1">Swipe <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
             </h3>
-            <div id="hourlyContainer" class="flex gap-3 overflow-x-auto hide-scroll pb-2 w-full snap-x">
-                </div>
+            <div id="hourlyContainer" class="flex gap-3 overflow-x-auto hide-scroll pb-2 w-full snap-x"></div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 ui-element">
-            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center">
-                <p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Wind</p>
-                <p class="text-lg font-semibold" id="windSpeed">--</p>
-            </div>
-            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center">
-                <p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Humidity</p>
-                <p class="text-lg font-semibold" id="humidity">--%</p>
-            </div>
-            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center">
-                <p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">UV Index</p>
-                <p class="text-lg font-semibold" id="uvIndex">--</p>
-            </div>
-            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center">
-                <p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Visibility</p>
-                <p class="text-lg font-semibold" id="visibility">-- km</p>
-            </div>
-            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center col-span-2">
-                <p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Pressure</p>
-                <p class="text-lg font-semibold" id="pressure">-- hPa</p>
-            </div>
+            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center"><p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Wind</p><p class="text-lg font-semibold" id="windSpeed">--</p></div>
+            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center"><p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Humidity</p><p class="text-lg font-semibold" id="humidity">--%</p></div>
+            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center"><p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">UV Index</p><p class="text-lg font-semibold" id="uvIndex">--</p></div>
+            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center"><p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Visibility</p><p class="text-lg font-semibold" id="visibility">-- km</p></div>
+            <div class="glass-panel rounded-[1.5rem] p-4 flex flex-col items-center text-center col-span-2"><p class="text-[11px] text-white/50 uppercase tracking-widest mb-1">Pressure</p><p class="text-lg font-semibold" id="pressure">-- hPa</p></div>
         </div>
 
         <div class="glass-panel rounded-3xl p-5 ui-element">
             <h3 class="text-xs text-white/50 uppercase tracking-widest mb-2">Air Quality Index</h3>
-            <div class="flex items-end gap-3 mb-4">
-                <p class="text-4xl font-bold" id="aqiValue">--</p>
-                <p class="text-lg text-white/60 mb-1" id="aqiStatus">--</p>
-            </div>
+            <div class="flex items-end gap-3 mb-4"><p class="text-4xl font-bold" id="aqiValue">--</p><p class="text-lg text-white/60 mb-1" id="aqiStatus">--</p></div>
             <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-4 relative">
                 <div class="absolute inset-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-600 opacity-50"></div>
                 <div id="aqiIndicator" class="absolute top-0 h-full w-2 bg-white rounded-full transition-all duration-1000 shadow-[0_0_8px_#fff]" style="left: 0%;"></div>
@@ -175,69 +155,101 @@
                 </div>
             </div>
         </div>
-        
     </div>
 
     <script>
         function showPremiumError(message) {
             document.getElementById('error-message').innerText = message;
             const toast = document.getElementById('error-toast');
-            gsap.killTweensOf(toast); 
-            gsap.fromTo(toast, { y: -20, opacity: 0, pointerEvents: "none" }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.5)" });
+            gsap.killTweensOf(toast); gsap.fromTo(toast, { y: -20, opacity: 0, pointerEvents: "none" }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.5)" });
             gsap.to(toast, { y: -20, opacity: 0, duration: 0.4, delay: 4, ease: "power2.in" });
         }
 
         function getWeatherEmoji(code, isDay) {
-            const map = {
-                0: isDay ? '☀️' : '🌕', 
-                1: isDay ? '🌤️' : '☁️', 2: '⛅', 3: '☁️',
-                45: '🌫️', 48: '🌫️',
-                51: '🌦️', 53: '🌦️', 55: '🌧️',
-                61: '🌧️', 63: '🌧️', 65: '🌧️',
-                71: '🌨️', 73: '❄️', 75: '❄️',
-                80: '🌦️', 81: '🌧️', 82: '⛈️',
-                95: '⛈️', 96: '⛈️', 99: '⛈️'
-            };
+            const map = { 0: isDay?'☀️':'🌕', 1: isDay?'🌤️':'☁️', 2:'⛅', 3:'☁️', 45:'🌫️', 48:'🌫️', 51:'🌦️', 53:'🌦️', 55:'🌧️', 61:'🌧️', 63:'🌧️', 65:'🌧️', 71:'🌨️', 73:'❄️', 75:'❄️', 80:'🌦️', 81:'🌧️', 82:'⛈️', 95:'⛈️', 96:'⛈️', 99:'⛈️' };
             return map[code] || (isDay ? '☀️' : '🌙');
         }
 
+        // --- THE MASTER FX ENGINE ---
         function triggerWeatherFX(code, isDay) {
             const fxContainer = document.getElementById('weather-fx');
             fxContainer.innerHTML = ''; 
             updateEnvironment(code, isDay);
 
-            let particles = 0; let type = '';
-            if ([51,53,55,61,63,65,66,67,80,81,82].includes(code)) { particles = 60; type = 'rain'; } 
-            else if ([71,73,75,77,85,86].includes(code)) { particles = 40; type = 'snow'; }
-            else if (code === 0 && !isDay) { particles = 30; type = 'star'; }
-            else if ([2,3,45,48].includes(code)) { particles = 5; type = 'cloud'; }
+            const isStorm = [95, 96, 99].includes(code);
+            const isRain = [51,53,55,61,63,65,66,67,80,81,82].includes(code) || isStorm;
+            const isSnow = [71,73,75,77,85,86].includes(code);
+            const isCloudy = [2,3,45,48].includes(code);
+            const isClear = code <= 1;
 
-            for(let i=0; i<particles; i++) {
-                let el = document.createElement('div');
-                el.className = type === 'rain' ? 'rain-drop' : type === 'snow' ? 'snow-flake' : type === 'star' ? 'star' : 'cloud';
-                
-                if(type === 'rain') {
+            // 1. MASSIVE STARFIELD FOR CLEAR NIGHTS
+            if (!isDay && (isClear || isCloudy)) {
+                const createStarLayer = (count, size, duration) => {
+                    const layer = document.createElement('div');
+                    layer.className = 'star-layer';
+                    let shadows = [];
+                    for(let i=0; i<count; i++) {
+                        shadows.push(`${Math.random()*100}vw ${Math.random()*100}vh 0 ${size}px rgba(255,255,255,${Math.random() * 0.8 + 0.2})`);
+                    }
+                    layer.style.boxShadow = shadows.join(', ');
+                    layer.style.animationDuration = `${duration}s`;
+                    fxContainer.appendChild(layer);
+                };
+                createStarLayer(150, 1, 4);   // Hundreds of small fast-twinkling stars
+                createStarLayer(75, 1.5, 6);  // Medium stars
+                createStarLayer(25, 2, 8);    // Large slow-twinkling stars
+            }
+
+            // 2. SUN RAYS FOR CLEAR DAYS
+            if (isDay && isClear) {
+                const ray = document.createElement('div');
+                ray.className = 'sun-ray';
+                fxContainer.appendChild(ray);
+            }
+
+            // 3. RAIN & LIGHTNING
+            if (isRain) {
+                for(let i=0; i<80; i++) {
+                    let el = document.createElement('div'); el.className = 'rain-drop';
                     el.style.left = `${Math.random() * 100}vw`; el.style.top = `-${Math.random() * 20}vh`;
-                    el.style.animationDuration = `${0.5 + Math.random() * 0.3}s`; el.style.animationDelay = `${Math.random()}s`;
-                } else if(type === 'snow' || type === 'star') {
-                    el.style.left = `${Math.random() * 100}vw`; el.style.top = type === 'snow' ? `-${Math.random() * 20}vh` : `${Math.random() * 100}vh`;
-                    let size = Math.random() * (type==='snow'?4:3) + 1; el.style.width = `${size}px`; el.style.height = `${size}px`;
-                    el.style.animationDuration = type==='snow' ? `${3 + Math.random() * 3}s` : `${2 + Math.random() * 4}s`;
-                    el.style.animationDelay = `${Math.random() * 2}s`;
-                } else if(type === 'cloud') {
-                    el.style.top = `${Math.random() * 30}vh`; el.style.width = `${200 + Math.random() * 300}px`; el.style.height = `${100 + Math.random() * 150}px`;
-                    el.style.animationDuration = `${40 + Math.random() * 40}s`; el.style.animationDelay = `-${Math.random() * 40}s`;
+                    el.style.animationDuration = `${0.4 + Math.random() * 0.2}s`; el.style.animationDelay = `${Math.random()}s`;
+                    fxContainer.appendChild(el);
                 }
-                fxContainer.appendChild(el);
+                if (isStorm) {
+                    const flash = document.createElement('div'); flash.className = 'lightning-flash';
+                    fxContainer.appendChild(flash);
+                }
+            } 
+            
+            // 4. SNOW
+            else if (isSnow) {
+                for(let i=0; i<60; i++) {
+                    let el = document.createElement('div'); el.className = 'snow-flake';
+                    el.style.left = `${Math.random() * 100}vw`; el.style.top = `-${Math.random() * 20}vh`;
+                    let size = Math.random() * 4 + 2; el.style.width = `${size}px`; el.style.height = `${size}px`;
+                    el.style.animationDuration = `${3 + Math.random() * 4}s`; el.style.animationDelay = `${Math.random() * 3}s`;
+                    fxContainer.appendChild(el);
+                }
+            }
+
+            // 5. ROLLING CLOUDS
+            if (isCloudy || isRain || isSnow) {
+                for(let i=0; i<(isCloudy?5:3); i++) {
+                    let el = document.createElement('div'); el.className = 'cloud';
+                    el.style.top = `${Math.random() * 40}vh`; el.style.width = `${300 + Math.random() * 200}px`; el.style.height = `${100 + Math.random() * 150}px`;
+                    el.style.background = (isDay && !isRain && !isSnow) ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)';
+                    el.style.animationDuration = `${40 + Math.random() * 40}s`; el.style.animationDelay = `-${Math.random() * 40}s`;
+                    fxContainer.appendChild(el);
+                }
             }
         }
 
         function updateEnvironment(code, isDay) {
             const orb1 = document.getElementById('bg-orb-1'); const orb2 = document.getElementById('bg-orb-2');
             if (!isDay && code <= 3) { 
-                orb1.style.background = 'rgba(30, 58, 138, 0.15)'; orb2.style.background = 'rgba(88, 28, 135, 0.15)';
+                orb1.style.background = 'rgba(15, 23, 42, 0.4)'; orb2.style.background = 'rgba(88, 28, 135, 0.2)';
             } else if (code >= 50) { 
-                orb1.style.background = 'rgba(71, 85, 105, 0.2)'; orb2.style.background = 'rgba(100, 116, 139, 0.2)'; 
+                orb1.style.background = 'rgba(51, 65, 85, 0.3)'; orb2.style.background = 'rgba(71, 85, 105, 0.3)'; 
             } else { 
                 orb1.style.background = 'rgba(56, 189, 248, 0.15)'; orb2.style.background = 'rgba(236, 72, 153, 0.12)'; 
             }
@@ -256,20 +268,17 @@
                 const aqiURL = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,carbon_monoxide,sulphur_dioxide&timezone=auto`;
 
                 const [weatherRes, aqiRes] = await Promise.all([fetch(weatherURL), fetch(aqiURL)]);
-                
-                if (!weatherRes.ok) throw new Error("Weather API Error: Data not available for this region.");
+                if (!weatherRes.ok) throw new Error("Weather API Error: Data not available.");
 
                 const weatherData = await weatherRes.json();
                 const aqiData = await (aqiRes.ok ? aqiRes.json() : Promise.resolve(null));
 
-                const current = weatherData.current;
-                const daily = weatherData.daily;
+                const current = weatherData.current; const daily = weatherData.daily;
                 
                 document.getElementById('temperature').innerText = `${Math.round(current.temperature_2m)}°`;
                 document.getElementById('condition').innerText = getWeatherEmoji(current.weather_code, current.is_day) + " " + (current.is_day === 1 ? "Daytime" : "Night");
                 document.getElementById('feelsLike').innerText = `${Math.round(current.apparent_temperature)}°`;
                 document.getElementById('minMax').innerText = `${Math.round(daily.temperature_2m_min[0])}° ~ ${Math.round(daily.temperature_2m_max[0])}°`;
-
                 document.getElementById('windSpeed').innerText = `${current.wind_speed_10m} km/h`;
                 document.getElementById('humidity').innerText = `${current.relative_humidity_2m}%`;
                 document.getElementById('pressure').innerText = `${current.surface_pressure} hPa`;
@@ -287,16 +296,13 @@
                     document.getElementById('so2').innerText = aqiData.current.sulphur_dioxide || "--";
                     
                     let status = "Good"; let pct = Math.min((aqi / 150) * 100, 100);
-                    if(aqi > 50) status = "Moderate";
-                    if(aqi > 100) status = "Poor";
-                    if(aqi > 150) status = "Unhealthy";
+                    if(aqi > 50) status = "Moderate"; if(aqi > 100) status = "Poor"; if(aqi > 150) status = "Unhealthy";
                     
                     document.getElementById('aqiStatus').innerText = status;
                     document.getElementById('aqiIndicator').style.left = `calc(${pct}% - 4px)`;
                 }
 
-                const rise = new Date(daily.sunrise[0]);
-                const set = new Date(daily.sunset[0]);
+                const rise = new Date(daily.sunrise[0]); const set = new Date(daily.sunset[0]);
                 document.getElementById('sunriseTime').innerText = rise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('sunsetTime').innerText = set.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
@@ -307,7 +313,6 @@
                 animateUI();
 
             } catch (error) {
-                console.error(error);
                 document.getElementById('cityName').innerText = "Sync Failed";
                 document.getElementById('subRegion').innerText = "Tap Locate to retry";
                 showPremiumError(error.message);
@@ -315,19 +320,17 @@
         }
 
         function renderSwipeableHourly(times, temps, codes) {
-            const container = document.getElementById('hourlyContainer');
-            container.innerHTML = "";
+            const container = document.getElementById('hourlyContainer'); container.innerHTML = "";
             for (let i = 0; i < 24; i++) {
                 const date = new Date(times[i]);
                 let hours = date.getHours(); const ampm = hours >= 12 ? 'PM' : 'AM'; hours = hours % 12 || 12;
                 const timeStr = i === 0 ? 'Now' : `${hours} ${ampm}`;
                 const isDayHour = date.getHours() >= 6 && date.getHours() <= 18; 
-                const emoji = getWeatherEmoji(codes[i], isDayHour);
-
+                
                 container.innerHTML += `
                     <div class="flex flex-col items-center justify-between min-w-[4.5rem] p-3 rounded-2xl bg-white/5 border border-white/10 shrink-0 snap-start">
                         <span class="text-xs text-white/60">${timeStr}</span>
-                        <span class="text-2xl my-2 drop-shadow-md">${emoji}</span>
+                        <span class="text-2xl my-2 drop-shadow-md">${getWeatherEmoji(codes[i], isDayHour)}</span>
                         <span class="text-lg font-semibold">${Math.round(temps[i])}°</span>
                     </div>
                 `;
@@ -335,8 +338,7 @@
         }
 
         function renderDailyForecast(daily) {
-            const container = document.getElementById('dailyForecast');
-            container.innerHTML = "";
+            const container = document.getElementById('dailyForecast'); container.innerHTML = "";
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             for (let i = 0; i < 7; i++) {
                 const date = new Date(daily.time[i]);
@@ -357,14 +359,10 @@
             }
         }
 
-        // --- Autocomplete & Search ---
-        const input = document.getElementById('cityInput');
-        const dropdown = document.getElementById('autocomplete-list');
-        let timeoutId;
-
+        // --- Autocomplete ---
+        const input = document.getElementById('cityInput'); const dropdown = document.getElementById('autocomplete-list'); let timeoutId;
         input.addEventListener('input', (e) => {
-            clearTimeout(timeoutId);
-            const query = e.target.value.trim();
+            clearTimeout(timeoutId); const query = e.target.value.trim();
             if (query.length < 3) { hideDropdown(); return; }
             timeoutId = setTimeout(() => fetchAutocomplete(query), 400); 
         });
@@ -372,66 +370,43 @@
         async function fetchAutocomplete(query) {
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&addressdetails=1`);
-                const data = await res.json();
-                if (!data || data.length === 0) return;
-
+                const data = await res.json(); if (!data || data.length === 0) return;
                 dropdown.innerHTML = ''; 
                 data.forEach(place => {
-                    const li = document.createElement('li');
-                    const addr = place.address || {};
+                    const li = document.createElement('li'); const addr = place.address || {};
                     const primaryName = addr.village || addr.town || addr.city_district || addr.city || place.name;
                     const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
-
                     li.className = 'px-5 py-3 cursor-pointer hover:bg-white/10 transition-colors text-white border-b border-white/5 last:border-none text-left';
                     li.innerHTML = `<div class="font-medium text-sm">${primaryName}</div><div class="text-[10px] text-white/50 truncate mt-0.5">${subInfo}</div>`;
-                    
-                    li.onclick = () => {
-                        input.value = primaryName;
-                        hideDropdown();
-                        fetchFullDashboard(place.lat, place.lon, primaryName, subInfo);
-                    };
+                    li.onclick = () => { input.value = primaryName; hideDropdown(); fetchFullDashboard(place.lat, place.lon, primaryName, subInfo); };
                     dropdown.appendChild(li);
                 });
-                dropdown.classList.remove('hidden');
-                setTimeout(() => { dropdown.style.opacity = '1'; dropdown.style.pointerEvents = 'auto'; }, 10);
+                dropdown.classList.remove('hidden'); setTimeout(() => { dropdown.style.opacity = '1'; dropdown.style.pointerEvents = 'auto'; }, 10);
             } catch (error) { console.error(error); }
         }
 
-        function hideDropdown() {
-            dropdown.style.opacity = '0'; dropdown.style.pointerEvents = 'none';
-            setTimeout(() => dropdown.classList.add('hidden'), 300);
-        }
+        function hideDropdown() { dropdown.style.opacity = '0'; dropdown.style.pointerEvents = 'none'; setTimeout(() => dropdown.classList.add('hidden'), 300); }
 
         function getExactLocation() {
             hideDropdown(); input.blur(); 
             if (navigator.geolocation) {
-                const customTypedName = input.value.trim();
-                input.value = "Locating...";
-                
+                const customTypedName = input.value.trim(); input.value = "Locating...";
                 navigator.geolocation.getCurrentPosition(
                     async (position) => {
                         try {
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
-                            const data = await res.json();
-                            const addr = data.address || {};
+                            const data = await res.json(); const addr = data.address || {};
                             const primaryName = customTypedName || (addr.village || addr.town || addr.suburb || addr.city || "Current Location");
                             const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
-                            
-                            input.value = primaryName;
-                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
-                        } catch {
-                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, customTypedName || "Your Coordinates");
-                        }
+                            input.value = primaryName; fetchFullDashboard(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
+                        } catch { fetchFullDashboard(position.coords.latitude, position.coords.longitude, customTypedName || "Your Coordinates"); }
                     },
-                    (error) => { input.value = ""; showPremiumError("GPS access denied."); },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    (error) => { input.value = ""; showPremiumError("GPS access denied."); }, { enableHighAccuracy: true, timeout: 10000 }
                 );
             }
         }
 
-        window.onload = () => {
-            fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India");
-        };
+        window.onload = () => { fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India"); };
     </script>
 </body>
 </html>
