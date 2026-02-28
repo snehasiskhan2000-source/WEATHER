@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aura | Ultra Premium Weather</title>
+    <title>Aura | Made By Bittu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -19,7 +19,6 @@
             overscroll-behavior-y: none;
         }
         
-        /* GPU Accelerated Orbs */
         .ambient-orb {
             position: fixed;
             border-radius: 50%;
@@ -32,10 +31,8 @@
         .orb-1 { top: -20%; left: -10%; width: 70vw; height: 70vw; background: rgba(56, 189, 248, 0.1); }
         .orb-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(139, 92, 246, 0.1); }
         
-        /* Weather FX Layer */
         #weather-fx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
         
-        /* Premium Glassmorphism */
         .glass-panel {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(24px);
@@ -46,34 +43,22 @@
             transform: translateZ(0);
         }
 
-        #hourlyContainer {
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-            touch-action: pan-x;
-        }
+        #hourlyContainer { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; touch-action: pan-x; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         input::placeholder { color: rgba(255,255,255,0.3); }
 
-        /* --- ADVANCED WEATHER ANIMATIONS --- */
         @keyframes fall { to { transform: translateY(110vh); } }
         @keyframes drift { from { transform: translateX(-20vw); } to { transform: translateX(120vw); } }
-        @keyframes pulseTwinkle { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; transform: scale(1.05); } }
+        @keyframes pulseTwinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; transform: scale(1.05); } }
         @keyframes pulseRay { 0% { opacity: 0.3; transform: translateX(-50%) scale(1); } 100% { opacity: 0.7; transform: translateX(-50%) scale(1.1); } }
         @keyframes lightningAnim { 0%, 94%, 98%, 100% { opacity: 0; } 95% { opacity: 0.8; } 96% { opacity: 0; } 97% { opacity: 1; } }
 
-        /* Weather Elements */
         .rain-drop { position: absolute; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.4)); width: 1.5px; height: 35px; animation: fall linear infinite; will-change: transform; }
         .snow-flake { position: absolute; background: #fff; border-radius: 50%; animation: fall linear infinite; box-shadow: 0 0 10px #fff; will-change: transform; }
         .cloud { position: absolute; border-radius: 50%; filter: blur(40px); animation: drift linear infinite; will-change: transform; }
-        
-        /* The Massive Starfield Trick */
         .star-layer { position: absolute; width: 1px; height: 1px; background: transparent; animation: pulseTwinkle ease-in-out infinite; will-change: opacity, transform; }
-        
-        /* Sun Rays */
         .sun-ray { position: absolute; top: -10%; left: 50%; width: 150vw; height: 100vh; background: radial-gradient(circle at center top, rgba(255,255,255,0.15) 0%, transparent 60%); transform: translateX(-50%); animation: pulseRay 8s infinite alternate ease-in-out; mix-blend-mode: overlay; }
-        
-        /* Lightning */
         .lightning-flash { position: absolute; inset: 0; background: white; opacity: 0; z-index: 10; mix-blend-mode: overlay; animation: lightningAnim 8s infinite; }
     </style>
 </head>
@@ -99,7 +84,7 @@
         <ul id="autocomplete-list" class="absolute top-full left-0 w-full mt-3 glass-panel rounded-3xl overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300 max-h-56 overflow-y-auto hidden flex-col z-[100] shadow-[0_20px_40px_rgba(0,0,0,0.5)] border border-white/10"></ul>
     </div>
 
-    <div class="w-full max-w-md flex flex-col gap-4 pb-10 relative z-10" id="dashboard">
+    <div class="w-full max-w-md flex flex-col gap-4 pb-4 relative z-10" id="dashboard">
         <div class="text-center mb-2 ui-element">
             <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white capitalize">Syncing...</h1>
             <p id="subRegion" class="text-sm text-white/50 mb-4">Establishing uplink</p>
@@ -155,6 +140,10 @@
                 </div>
             </div>
         </div>
+        
+        <a href="https://t.me/Snehasiskhan" target="_blank" rel="noopener noreferrer" class="ui-element block text-center text-[10px] text-white/30 hover:text-white/70 transition-colors tracking-[0.2em] uppercase mt-6 mb-2">
+            Made By Bittu
+        </a>
     </div>
 
     <script>
@@ -170,7 +159,6 @@
             return map[code] || (isDay ? '☀️' : '🌙');
         }
 
-        // --- THE MASTER FX ENGINE ---
         function triggerWeatherFX(code, isDay) {
             const fxContainer = document.getElementById('weather-fx');
             fxContainer.innerHTML = ''; 
@@ -182,32 +170,26 @@
             const isCloudy = [2,3,45,48].includes(code);
             const isClear = code <= 1;
 
-            // 1. MASSIVE STARFIELD FOR CLEAR NIGHTS
             if (!isDay && (isClear || isCloudy)) {
                 const createStarLayer = (count, size, duration) => {
                     const layer = document.createElement('div');
                     layer.className = 'star-layer';
                     let shadows = [];
-                    for(let i=0; i<count; i++) {
-                        shadows.push(`${Math.random()*100}vw ${Math.random()*100}vh 0 ${size}px rgba(255,255,255,${Math.random() * 0.8 + 0.2})`);
-                    }
+                    for(let i=0; i<count; i++) { shadows.push(`${Math.random()*100}vw ${Math.random()*100}vh 0 ${size}px rgba(255,255,255,${Math.random() * 0.8 + 0.2})`); }
                     layer.style.boxShadow = shadows.join(', ');
                     layer.style.animationDuration = `${duration}s`;
                     fxContainer.appendChild(layer);
                 };
-                createStarLayer(150, 1, 4);   // Hundreds of small fast-twinkling stars
-                createStarLayer(75, 1.5, 6);  // Medium stars
-                createStarLayer(25, 2, 8);    // Large slow-twinkling stars
+                // SLOWED DOWN STARS FOR A TRANQUIL NIGHT SKY
+                createStarLayer(150, 1, 8);   
+                createStarLayer(75, 1.5, 12); 
+                createStarLayer(25, 2, 16);    
             }
 
-            // 2. SUN RAYS FOR CLEAR DAYS
             if (isDay && isClear) {
-                const ray = document.createElement('div');
-                ray.className = 'sun-ray';
-                fxContainer.appendChild(ray);
+                const ray = document.createElement('div'); ray.className = 'sun-ray'; fxContainer.appendChild(ray);
             }
 
-            // 3. RAIN & LIGHTNING
             if (isRain) {
                 for(let i=0; i<80; i++) {
                     let el = document.createElement('div'); el.className = 'rain-drop';
@@ -215,13 +197,8 @@
                     el.style.animationDuration = `${0.4 + Math.random() * 0.2}s`; el.style.animationDelay = `${Math.random()}s`;
                     fxContainer.appendChild(el);
                 }
-                if (isStorm) {
-                    const flash = document.createElement('div'); flash.className = 'lightning-flash';
-                    fxContainer.appendChild(flash);
-                }
+                if (isStorm) { const flash = document.createElement('div'); flash.className = 'lightning-flash'; fxContainer.appendChild(flash); }
             } 
-            
-            // 4. SNOW
             else if (isSnow) {
                 for(let i=0; i<60; i++) {
                     let el = document.createElement('div'); el.className = 'snow-flake';
@@ -232,7 +209,6 @@
                 }
             }
 
-            // 5. ROLLING CLOUDS
             if (isCloudy || isRain || isSnow) {
                 for(let i=0; i<(isCloudy?5:3); i++) {
                     let el = document.createElement('div'); el.className = 'cloud';
@@ -255,9 +231,7 @@
             }
         }
 
-        function animateUI() {
-            gsap.fromTo(".ui-element", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out" });
-        }
+        function animateUI() { gsap.fromTo(".ui-element", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out" }); }
 
         async function fetchFullDashboard(lat, lon, primaryName, subRegion = "") {
             document.getElementById('cityName').innerText = primaryName || "Locating...";
@@ -313,8 +287,7 @@
                 animateUI();
 
             } catch (error) {
-                document.getElementById('cityName').innerText = "Sync Failed";
-                document.getElementById('subRegion').innerText = "Tap Locate to retry";
+                document.getElementById('cityName').innerText = "Sync Failed"; document.getElementById('subRegion').innerText = "Tap Locate to retry";
                 showPremiumError(error.message);
             }
         }
