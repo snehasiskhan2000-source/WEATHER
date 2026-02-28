@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aura | Made By Bittu</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#030508">
+    <link rel="apple-touch-icon" href="/icon.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Space Grotesk', sans-serif;
@@ -180,7 +186,6 @@
                     layer.style.animationDuration = `${duration}s`;
                     fxContainer.appendChild(layer);
                 };
-                // SLOWED DOWN STARS FOR A TRANQUIL NIGHT SKY
                 createStarLayer(150, 1, 8);   
                 createStarLayer(75, 1.5, 12); 
                 createStarLayer(25, 2, 16);    
