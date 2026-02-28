@@ -1,0 +1,17 @@
+{
+  "name": "Aura Weather",
+  "short_name": "Aura",
+  "description": "Ultra Premium Weather Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030508",
+  "theme_color": "#030508",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
