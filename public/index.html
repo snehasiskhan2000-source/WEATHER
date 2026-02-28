@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura | Premium Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        /* Dynamic glowing orbs for that 3D spatial feel */
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            transition: background 1.5s ease;
+        }
+        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: rgba(56, 189, 248, 0.15); }
+        .orb-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: rgba(139, 92, 246, 0.15); }
+        
+        /* High-end frosted glass */
+        .glass-panel {
+            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+        }
+        
+        input::placeholder { color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center relative">
+
+    <div class="ambient-orb orb-1" id="bg-orb-1"></div>
+    <div class="ambient-orb orb-2" id="bg-orb-2"></div>
+
+    <div class="glass-panel rounded-[2.5rem] p-12 w-full max-w-lg relative z-10" id="app-container">
+        
+        <div class="flex gap-4 mb-10 search-bar">
+            <div class="relative w-full">
+                <input type="text" id="cityInput" placeholder="Search location..." 
+                       class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none text-lg focus:bg-white/10 focus:border-white/30 transition-all">
+            </div>
+            <button onclick="fetchWeather()" class="bg-white text-black px-8 rounded-2xl font-semibold hover:bg-gray-200 transition-colors active:scale-95">
+                Go
+            </button>
+        </div>
+
+        <div class="flex flex-col items-center justify-center min-h-[250px] weather-content relative">
+            
+            <div id="loader" class="absolute inset-0 flex items-center justify-center hidden">
+                <div class="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            </div>
+
+            <div id="weather-data" class="w-full text-center opacity-0">
+                <h2 id="cityName" class="text-2xl font-light tracking-widest text-white/70 uppercase mb-2">Location</h2>
+                <div class="text-8xl font-bold tracking-tighter mb-4" id="temperature">--°</div>
+                <p id="condition" class="text-xl text-white/50 mb-10 font-light">Awaiting telemetry</p>
+                
+                <div class="grid grid-cols-2 gap-4 border-t border-white/10 pt-8 mt-4">
+                    <div class="glass-panel rounded-2xl p-4 data-card">
+                        <p class="text-xs text-white/40 uppercase tracking-widest mb-1">Wind</p>
+                        <p class="text-xl font-medium" id="windSpeed">-- km/h</p>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-4 data-card">
+                        <p class="text-xs text-white/40 uppercase tracking-widest mb-1">Local Time</p>
+                        <p class="text-xl font-medium" id="time">--:--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cinematic Initial Load Sequence
+        const masterTl = gsap.timeline();
+        
+        masterTl.from("#app-container", { y: 40, opacity: 0, duration: 1.2, ease: "expo.out" })
+                .from(".search-bar", { y: 20, opacity: 0, duration: 0.8, ease: "power2.out" }, "-=0.8")
+                .to("#weather-data", { opacity: 1, duration: 1 }, "-=0.4");
+
+        // Dynamic Background Color Logic
+        function updateEnvironment(temp) {
+            const orb1 = document.getElementById('bg-orb-1');
+            const orb2 = document.getElementById('bg-orb-2');
+            
+            if (temp <= 10) { // Cold
+                orb1.style.background = 'rgba(56, 189, 248, 0.2)'; // Light Blue
+                orb2.style.background = 'rgba(59, 130, 246, 0.2)'; // Blue
+            } else if (temp > 10 && temp <= 25) { // Mild
+                orb1.style.background = 'rgba(167, 139, 250, 0.2)'; // Purple
+                orb2.style.background = 'rgba(236, 72, 153, 0.2)'; // Pink
+            } else { // Hot
+                orb1.style.background = 'rgba(251, 146, 60, 0.2)'; // Orange
+                orb2.style.background = 'rgba(239, 68, 68, 0.2)'; // Red
+            }
+        }
+
+        async function fetchWeather() {
+            const city = document.getElementById('cityInput').value;
+            if (!city) return;
+
+            const loader = document.getElementById('loader');
+            const weatherData = document.getElementById('weather-data');
+            
+            // Outro animation for old data
+            gsap.to(weatherData, { opacity: 0, y: -10, duration: 0.3 });
+            loader.classList.remove('hidden');
+
+            try {
+                // 1. Get Coordinates
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`);
+                const geoJson = await geoRes.json();
+                if (!geoJson.results) throw new Error("Location not found.");
+                
+                const { latitude, longitude, name, timezone } = geoJson.results[0];
+
+                // 2. Get Weather
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&timezone=${timezone}`);
+                const weatherJson = await weatherRes.json();
+                const current = weatherJson.current_weather;
+
+                // 3. Update DOM
+                document.getElementById('cityName').innerText = name;
+                document.getElementById('temperature').innerText = `${Math.round(current.temperature)}°`;
+                document.getElementById('windSpeed').innerText = `${current.windspeed} km/h`;
+                
+                // Open-Meteo specific mapping (simplified)
+                const isDay = current.is_day === 1;
+                document.getElementById('condition').innerText = isDay ? "Daytime conditions" : "Nighttime conditions";
+                
+                const date = new Date(current.time);
+                document.getElementById('time').innerText = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                // Update Ambient Lighting
+                updateEnvironment(current.temperature);
+
+                // Intro animation for new data
+                loader.classList.add('hidden');
+                gsap.fromTo(weatherData, 
+                    { opacity: 0, y: 20 }, 
+                    { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.2)" }
+                );
+                
+                // Micro-interaction on cards
+                gsap.from(".data-card", { y: 15, opacity: 0, stagger: 0.1, duration: 0.6, ease: "power2.out", delay: 0.2 });
+
+            } catch (error) {
+                loader.classList.add('hidden');
+                alert(error.message);
+                gsap.to(weatherData, { opacity: 1, y: 0, duration: 0.3 });
+            }
+        }
+
+        // Allow 'Enter' key to trigger search
+        document.getElementById("cityInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                fetchWeather();
+            }
+        });
+    </script>
+</body>
+</html>
