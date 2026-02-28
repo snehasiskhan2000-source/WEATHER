@@ -36,13 +36,16 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
         
         input::placeholder { color: rgba(255,255,255,0.3); }
+        
+        /* Hides scrollbar completely for ultra-clean look but keeps functionality */
         .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="w-full flex flex-col items-center pt-8 px-4 relative">
@@ -54,9 +57,9 @@
         <div class="flex items-center gap-2">
             <div class="relative w-full flex items-center bg-white/5 border border-white/10 rounded-2xl focus-within:bg-white/10 focus-within:border-white/30 transition-all">
                 <svg class="w-5 h-5 ml-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <input type="text" id="cityInput" placeholder="Search location..." autocomplete="off" class="w-full bg-transparent px-3 py-3 outline-none text-base">
+                <input type="text" id="cityInput" placeholder="Enter village, then tap GPS ➔" autocomplete="off" class="w-full bg-transparent px-3 py-3 outline-none text-base">
             </div>
-            <button onclick="getExactLocation()" class="p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all flex-shrink-0">
+            <button onclick="getExactLocation()" class="p-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl transition-all flex-shrink-0 active:scale-95">
                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </button>
         </div>
@@ -66,7 +69,7 @@
     <div class="w-full max-w-md flex flex-col gap-4 pb-10" id="dashboard">
         
         <div class="text-center mb-4 ui-element">
-            <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white">Location</h1>
+            <h1 id="cityName" class="text-3xl font-semibold tracking-wide text-white capitalize">Location</h1>
             <p id="subRegion" class="text-sm text-white/50 mb-4">--</p>
             <div class="text-8xl font-bold tracking-tighter mb-2" id="temperature">--°</div>
             <p id="condition" class="text-xl text-white/80 font-light mb-1">--</p>
@@ -74,25 +77,29 @@
         </div>
 
         <div class="glass-panel rounded-3xl p-5 ui-element">
-            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">Hourly Forecast</h3>
-            <div class="w-full h-32 relative">
-                <canvas id="hourlyChart"></canvas>
+            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4 flex justify-between">
+                <span>24-Hour Forecast</span>
+                <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">Swipe ➔</span>
+            </h3>
+            <div class="w-full overflow-x-auto hide-scroll pb-2">
+                <div style="width: 800px; height: 120px; position: relative;">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
             </div>
         </div>
 
         <div class="glass-panel rounded-3xl p-5 ui-element">
             <h3 class="text-xs text-white/50 uppercase tracking-widest mb-4">7-Day Forecast</h3>
-            <div id="dailyForecast" class="flex flex-col gap-3">
-                </div>
+            <div id="dailyForecast" class="flex flex-col gap-3"></div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 ui-element">
             <div class="glass-panel rounded-3xl p-5">
-                <p class="text-xs text-white/50 uppercase tracking-widest mb-2 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg> Wind</p>
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2">Wind</p>
                 <p class="text-2xl font-semibold" id="windSpeed">--</p>
             </div>
             <div class="glass-panel rounded-3xl p-5">
-                <p class="text-xs text-white/50 uppercase tracking-widest mb-2 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> UV Index</p>
+                <p class="text-xs text-white/50 uppercase tracking-widest mb-2">UV Index</p>
                 <p class="text-2xl font-semibold" id="uvIndex">--</p>
             </div>
             <div class="glass-panel rounded-3xl p-5">
@@ -104,36 +111,16 @@
                 <p class="text-2xl font-semibold" id="pressure">-- hPa</p>
             </div>
         </div>
-
-        <div class="glass-panel rounded-3xl p-5 ui-element">
-            <h3 class="text-xs text-white/50 uppercase tracking-widest mb-2">Air Quality Index</h3>
-            <div class="flex items-end gap-3 mb-4">
-                <p class="text-4xl font-bold" id="aqiValue">--</p>
-                <p class="text-lg text-white/60 mb-1" id="aqiStatus">--</p>
-            </div>
-            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-4">
-                <div id="aqiBar" class="h-full w-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 transition-all duration-1000"></div>
-            </div>
-            <div class="flex justify-between text-xs text-white/50 border-t border-white/10 pt-3">
-                <div class="text-center"><p>PM2.5</p><p class="text-white font-medium" id="pm25">--</p></div>
-                <div class="text-center"><p>PM10</p><p class="text-white font-medium" id="pm10">--</p></div>
-                <div class="text-center"><p>SO2</p><p class="text-white font-medium" id="so2">--</p></div>
-            </div>
-        </div>
     </div>
 
     <script>
-        // Setup Chart.js global defaults for dark theme
-        Chart.defaults.color = 'rgba(255, 255, 255, 0.5)';
+        Chart.defaults.color = 'rgba(255, 255, 255, 0.6)';
         Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+        Chart.defaults.font.size = 11;
         let hourlyChartInstance = null;
 
-        // Animations
         function animateUI() {
-            gsap.fromTo(".ui-element", 
-                { y: 30, opacity: 0 }, 
-                { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: "power3.out" }
-            );
+            gsap.fromTo(".ui-element", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: "power3.out" });
         }
 
         function updateEnvironment(temp) {
@@ -148,23 +135,16 @@
             }
         }
 
-        // --- Core Fetching Logic ---
         async function fetchFullDashboard(lat, lon, primaryName, subRegion = "") {
             document.getElementById('cityName').innerText = primaryName || "Locating...";
             document.getElementById('subRegion').innerText = subRegion;
             
             try {
-                // 1. Fetch Comprehensive Weather
                 const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,surface_pressure,wind_speed_10m&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto`;
-                
-                // 2. Fetch Air Quality
-                const aqiURL = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,sulphur_dioxide&timezone=auto`;
 
-                const [weatherRes, aqiRes] = await Promise.all([fetch(weatherURL), fetch(aqiURL)]);
+                const weatherRes = await fetch(weatherURL);
                 const weatherData = await weatherRes.json();
-                const aqiData = await aqiRes.json();
 
-                // Update Hero
                 const current = weatherData.current;
                 const daily = weatherData.daily;
                 document.getElementById('temperature').innerText = `${Math.round(current.temperature_2m)}°`;
@@ -172,33 +152,14 @@
                 document.getElementById('feelsLike').innerText = `${Math.round(current.apparent_temperature)}°`;
                 document.getElementById('minMax').innerText = `${Math.round(daily.temperature_2m_min[0])}° ~ ${Math.round(daily.temperature_2m_max[0])}°`;
 
-                // Update Details Grid
                 document.getElementById('windSpeed').innerText = `${current.wind_speed_10m} km/h`;
                 document.getElementById('humidity').innerText = `${current.relative_humidity_2m}%`;
                 document.getElementById('pressure').innerText = `${current.surface_pressure} hPa`;
                 document.getElementById('uvIndex').innerText = daily.uv_index_max[0] ? daily.uv_index_max[0].toFixed(1) : "--";
 
-                // Update AQI
-                if(aqiData.current) {
-                    const aqi = aqiData.current.european_aqi;
-                    document.getElementById('aqiValue').innerText = aqi;
-                    document.getElementById('pm25').innerText = aqiData.current.pm2_5;
-                    document.getElementById('pm10').innerText = aqiData.current.pm10;
-                    document.getElementById('so2').innerText = aqiData.current.sulphur_dioxide;
-                    
-                    let status = "Good"; let pct = (aqi / 100) * 100;
-                    if(aqi > 50) status = "Moderate";
-                    if(aqi > 100) status = "Unhealthy";
-                    document.getElementById('aqiStatus').innerText = status;
-                    document.getElementById('aqiBar').style.width = `${Math.min(pct, 100)}%`;
-                }
-
-                // Render Hourly Chart (Next 12 hours)
-                renderHourlyChart(weatherData.hourly.time.slice(0, 12), weatherData.hourly.temperature_2m.slice(0, 12));
-
-                // Render Daily List
+                // PULL 24 HOURS INSTEAD OF 12
+                renderHourlyChart(weatherData.hourly.time.slice(0, 24), weatherData.hourly.temperature_2m.slice(0, 24));
                 renderDailyForecast(daily);
-
                 updateEnvironment(current.temperature_2m);
                 animateUI();
 
@@ -207,12 +168,15 @@
             }
         }
 
-        // --- Chart & List Renderers ---
         function renderHourlyChart(times, temps) {
             const ctx = document.getElementById('hourlyChart').getContext('2d');
-            
-            // Format time labels (e.g., "14:00")
-            const labels = times.map(t => new Date(t).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+            const labels = times.map(t => {
+                const date = new Date(t);
+                let hours = date.getHours();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                return `${hours} ${ampm}`;
+            });
 
             if (hourlyChartInstance) hourlyChartInstance.destroy();
 
@@ -225,9 +189,10 @@
                         borderColor: '#ffffff',
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                         borderWidth: 2,
-                        tension: 0.4, // Smooth curves
+                        tension: 0.4,
                         fill: true,
-                        pointRadius: 0, // Hide dots unless hovered
+                        pointBackgroundColor: '#ffffff',
+                        pointRadius: 2, 
                     }]
                 },
                 options: {
@@ -235,9 +200,13 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false }, tooltip: { enabled: true } },
                     scales: {
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 5 } },
-                        y: { display: false } // Hide Y axis for clean look
-                    }
+                        x: { 
+                            grid: { display: false, drawBorder: false },
+                            ticks: { autoSkip: false, maxRotation: 0 } // Forces all 24 labels to show
+                        },
+                        y: { display: false, min: Math.min(...temps) - 2 } // Hides Y axis, gives bottom padding
+                    },
+                    layout: { padding: { top: 10 } }
                 }
             });
         }
@@ -254,11 +223,11 @@
                 const max = Math.round(daily.temperature_2m_max[i]);
 
                 container.innerHTML += `
-                    <div class="flex justify-between items-center text-sm py-1 border-b border-white/5 last:border-0">
+                    <div class="flex justify-between items-center text-sm py-2 border-b border-white/5 last:border-0">
                         <span class="w-20 text-white/80">${dayName}</span>
                         <div class="flex-1 px-4 flex items-center">
-                            <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden relative">
-                                <div class="absolute h-full bg-white/50 rounded-full" style="left: 20%; right: 20%;"></div>
+                            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden relative">
+                                <div class="absolute h-full bg-gradient-to-r from-blue-400 to-orange-400 rounded-full" style="left: 20%; right: 20%;"></div>
                             </div>
                         </div>
                         <span class="w-16 text-right font-medium">${min}° <span class="text-white/40 ml-1">${max}°</span></span>
@@ -267,7 +236,7 @@
             }
         }
 
-        // --- Search & Autocomplete ---
+        // --- Autocomplete ---
         const input = document.getElementById('cityInput');
         const dropdown = document.getElementById('autocomplete-list');
         let timeoutId;
@@ -312,34 +281,38 @@
             setTimeout(() => dropdown.classList.add('hidden'), 300);
         }
 
-        // --- The Ultimate Fix: Exact Location Button ---
+        // --- The "Phantom Override" Fix ---
         function getExactLocation() {
             if (navigator.geolocation) {
+                // If you typed something in the box, save it to use as the title!
+                const customTypedName = input.value.trim();
                 input.value = "Locating...";
+                
                 navigator.geolocation.getCurrentPosition(
                     async (position) => {
                         try {
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
                             const data = await res.json();
                             const addr = data.address || {};
-                            const primaryName = addr.village || addr.town || addr.suburb || addr.city || "Current Location";
+                            
+                            // If user typed Finga Gachhi, use that! Otherwise, use GPS text.
+                            const primaryName = customTypedName || (addr.village || addr.town || addr.suburb || addr.city || "Current Location");
                             const subInfo = [addr.state, addr.country].filter(Boolean).join(", ");
                             
                             input.value = primaryName;
                             fetchFullDashboard(position.coords.latitude, position.coords.longitude, primaryName, subInfo);
                         } catch {
-                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, "Your Coordinates");
+                            fetchFullDashboard(position.coords.latitude, position.coords.longitude, customTypedName || "Your Coordinates");
                         }
                     },
-                    (error) => alert("GPS access denied or timed out."),
+                    (error) => alert("GPS access denied."),
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
             }
         }
 
-        // Boot
         window.onload = () => {
-            fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India"); // Default
+            fetchFullDashboard(22.5726, 88.3639, "Kolkata", "West Bengal, India");
         };
     </script>
 </body>
