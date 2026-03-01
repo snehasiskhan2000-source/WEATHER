@@ -285,7 +285,20 @@
                 document.getElementById('sunriseTime').innerText = rise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('sunsetTime').innerText = set.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-                renderSwipeableHourly(weatherData.hourly.time.slice(0, 24), weatherData.hourly.temperature_2m.slice(0, 24), weatherData.hourly.weather_code.slice(0, 24));
+                // FIX: Find the index of the current hour so the timeline starts NOW
+                let startIndex = weatherData.hourly.time.findIndex(t => t === current.time);
+                if (startIndex === -1) {
+                    const now = new Date().getTime();
+                    startIndex = weatherData.hourly.time.findIndex(t => new Date(t).getTime() > now - 3600000);
+                }
+                if (startIndex < 0) startIndex = 0;
+
+                renderSwipeableHourly(
+                    weatherData.hourly.time.slice(startIndex, startIndex + 24), 
+                    weatherData.hourly.temperature_2m.slice(startIndex, startIndex + 24), 
+                    weatherData.hourly.weather_code.slice(startIndex, startIndex + 24)
+                );
+                
                 renderDailyForecast(daily);
                 
                 triggerWeatherFX(current.weather_code, current.is_day);
